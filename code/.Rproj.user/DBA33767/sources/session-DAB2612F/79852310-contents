@@ -48,7 +48,7 @@ gdp = gdp[c("Country Code", "GDP")]
 names(gdp)[names(gdp) == "Country Code"] <- "country code"
 df_per_sector = merge(per_sector_emissions, gdp, by = "country code", all = F)
 
-filename_per_sector_gdp = paste(data_path, "per_sector_emissions_gdp.csv", sep = "")
+filename_per_sector_gdp = paste(data_path, "/output/per_sector_emissions_gdp.csv", sep = "")
 write.csv(df_per_sector, file = filename_per_sector_gdp)
 
 
