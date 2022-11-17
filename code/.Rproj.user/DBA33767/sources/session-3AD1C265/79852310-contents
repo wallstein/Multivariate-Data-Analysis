@@ -46,10 +46,12 @@ df_total$Emissions_per_GDP = df_total$Emissions / df_total$GDP
 # Merge per sector and GDP
 gdp = gdp[c("Country Code", "GDP")]
 names(gdp)[names(gdp) == "Country Code"] <- "country code"
+gdp$GDP = as.numeric(gdp$GDP)
 df_per_sector = merge(per_sector_emissions, gdp, by = "country code", all = F)
 
 filename_per_sector_gdp = paste(data_path, "/output/per_sector_emissions_gdp.csv", sep = "")
 write.csv(df_per_sector, file = filename_per_sector_gdp)
 
+pairs(df_per_sector[,c(-1,-2)])
 
 
