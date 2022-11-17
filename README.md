@@ -1,2 +1,2 @@
 # Multivariate Data Analysis
- With Martin Blasi and Carles Manchado
+ A project with Martin Blasi and Carles Manchado
