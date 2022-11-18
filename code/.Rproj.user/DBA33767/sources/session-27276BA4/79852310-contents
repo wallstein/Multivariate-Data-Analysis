@@ -55,3 +55,5 @@ write.csv(df_per_sector, file = filename_per_sector_gdp)
 pairs(df_per_sector[,c(-1,-2)])
 
 
+filename_data = paste(data_path, "data.csv", sep = "")
+data = read.csv(filename_data)
