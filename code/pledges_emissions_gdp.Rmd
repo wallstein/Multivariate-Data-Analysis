@@ -1,0 +1,170 @@
+---
+title: "R Coding Sample"
+author: "Jonas Wallstein"
+date: "2022-11-20"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### The goal of this code is to find similiarities in emission profiles of several countries by performing a Principal Component Analysis on emission, GDP and climate pledge data
+
+
+````{r Setup}
+# Setup
+library(readxl)
+library(reshape)
+
+data_path = paste(dirname(getwd()), "/data/", sep = "")
+````
+
+#### 1. Create a dataset on sector-level emissions from data from the climate trace project: https://climatetrace.org/
+````{r}
+filename_emissions = paste(data_path, "climatetrace_emissions_by_subsector_timeseries_interval_year_since_2020_to_2020.csv", sep = "")
+
+emissions = read.csv(filename_emissions,sep = ",", header = TRUE)
+
+# Aggregating Emissions over each Country
+total_emissions = aggregate(emissions[,1], by = list(emissions$country, emissions$country_full), FUN = sum, na.rm = TRUE)
+# Renaming variables
+colnames(total_emissions) = c("Country Code","Emissions Data Country Name", "Emissions")
+
+# Emissions per sector
+per_sector_emissions = aggregate(emissions[,1], by = list(emissions$country, emissions$country_full, emissions$sector), FUN = sum, na.rm = T)
+colnames(per_sector_emissions) = c("country code","country name", "sector", "emissions")
+per_sector_emissions = reshape(per_sector_emissions, idvar = c("country code", "country name") , timevar = "sector", direction = "wide")
+per_sector_emissions$emissions.total = total_emissions$Emissions
+
+
+head(per_sector_emissions)
+````
+
+#### 2. Adding 2020 GDP data from https://data.worldbank.org/indicator/NY.GDP.MKTP.CD?end=2021&start=1960
+
+````{r}
+filename_gdp = paste(data_path, "GDP_worldbank.xls", sep = "")
+# Reading data, Renaming variables to the correct names in the third row, Dropping the first three irrelevant rows
+gdp = read_excel(filename_gdp, skip = 3, col_names = TRUE)
+
+# Rename the 2020 GDP variable simply to GDP and Country code to match emission data
+names(gdp)[names(gdp) == "2020"] <- "GDP"
+names(gdp)[names(gdp) == "Country Code"] <- "country code"
+# Drop all irrelevant variables
+gdp = gdp[c("country code", "GDP")]
+gdp$GDP = as.numeric(gdp$GDP)
+
+df_per_sector = merge(per_sector_emissions, gdp, by = "country code", all = F)
+
+# Saving dataframe as csv file
+filename_per_sector_gdp = paste(data_path, "/output/per_sector_emissions_gdp.csv", sep = "")
+write.csv(df_per_sector, file = filename_per_sector_gdp)
+
+```
+
+#### 3. Merging data on Climate Pledges from https://ourworldindata.org/grapher/net-zero-targets?country=SOM~BRA~MDG
+````{r}
+filename_pledges = paste(data_path, "/pledges/net-zero-targets.csv", sep = "")
+pledges = read.csv(filename_pledges,sep = ",", header = TRUE)
+names(pledges)[names(pledges) == "Code"] <- "country code"
+names(pledges)[names(pledges) == "Year"] <- "net_zero_target"
+pledges = pledges[c("country code", "net_zero_target")]
+
+df_pledges = merge(df_per_sector, pledges, by = "country code", all = F)
+rownames(df_pledges) = df_pledges[,1]
+head(df_pledges)
+
+# Saving dataframe as csv file
+filename_merged_pledges= paste(data_path, "/output/pledges_emissions_gdp.csv", sep = "")
+write.csv(df_pledges, file = filename_merged_pledges)
+````
+#### 4. Performing the Principle Component Analyis manually for practice
+````{r}
+# Transforming dataframe into matrix to perform matrix operations
+X = as.matrix(df_pledges)
+# Getting rid of non numercal variables
+rownames(X) = X[,1]
+X = X[,c(-1,-2)]
+X = apply(X, 2, as.numeric)
+
+# Scaling data
+Xs = scale(X)
+# Creating correlation matrix R
+R = cor(Xs)
+# Eigenvectors and values
+E = eigen(R)$vectors
+l = eigen(R)$values
+
+R2 = l / sum(l) * 100
+# The first two principal components explain 77% of the variance
+
+# Perform the PCA
+Y = Xs %*% E
+colnames(Y) <- paste0("PC", 1:ncol(Y)) 
+W = cor(X,Y)
+
+````
+
+#### 5. Plotting Variables and Observations in a PCA Plot
+```{r}
+# Limits for the graph with the variables
+inferior = min(W[,1:2])
+superior = max(W[,1:2])
+limits = 1.01 * c(inferior, superior) + 0.1
+
+# Defining the limits and the titles for the graph
+plot(W[,1:2],
+  type="n", 
+  asp = 1, 
+  main=paste("Variable PCA Plot, explained Variance is ",
+  round(R2[1]+R2[2],1), "%"),
+  xlim = limits, 
+  ylim = limits, 
+  xlab=paste("PC1(", round(R2[1],1), "%)"), 
+  ylab=paste("PC2(", round(R2[2],1), "%)") 
+)
+
+# The axis
+abline(v=0, col="blue")
+abline(h=0, col="blue")
+
+# Drawing the arrows
+arrows(0,0,W[,1],W[,2])
+
+# Adding the labels
+text(1.1 * W[,1:2], colnames(X), col= "cadetblue4",cex=0.9)
+
+`````
+
+- The first principal component is largely determined by GDP and general emissions (without maritime emissions)
+
+- The second principal component is mostly determined by the net-zero-target and by maritime emissions
+
+
+
+```{r}
+# Plotting observations
+plot(Y[,1],Y[,2],xlab='PC1',ylab='PC2', type = "n", main=paste("Observation PCA Plot"))
+points(Y[,1:2], pch="") 
+text(Y[,1]-0.1,Y[,2]-0.1, labels=rownames(df_pledges), col = "cadetblue4")
+`````
+
+#### 6. Performing K-Means Clustering
+```{r}
+# Chose k = 4 clusters
+km <- kmeans(Xs, centers = 4)
+clus <- km$cluster
+# Plotting Clusters
+plot(Y[,1],Y[,2],col=clus,pch=clus,xlab='PC1',ylab='PC2',main="K-means clustering with 4 Clusters")
+text(Y[,1]-0.1,Y[,2]-0.1, labels=rownames(X))
+
+````
+
+- China and the US form a cluster in most iterations and Indonesia, Brazil, Russia and Australia form another cluster
+- To gain a better understanding of emission profiles, more data must be added
+
+
+
+
+
