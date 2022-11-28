@@ -1,0 +1,385 @@
+---
+title: "Emissions & Preferences"
+author: "Martin Blasi, Jonas Wallstein & Carles Manchado"
+date: "2022-11-28"
+header-includes:
+  -\newcommand{\bx}{{\bf x}}
+  -\newcommand{\by}{{\bf y}}
+  -\newcommand{\bv}{{\bf v}}
+  -\newcommand{\be}{{\bf e}}
+  -\newcommand{\bu}{{\bf u}}
+output: 
+  slidy_presentation:
+    incremental: true
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Emissions and Preferences
+
+- CO2 emissions: Total and per sector (9) from NACE (Statistical classification of economic activities in the European Community) in tonnes of CO2 per capita
+
+- Together with GDP per capita from OECD
+
+- Preference parameters from Global Preference Survey, Falck et al. (2012)
+
+- n=74 countries
+
+- p=17 variables (subset with p=8)
+
+- Methods: PCA & Clustering
+
+- Goal: Hidden interesting patterns behind pollution behaviour and fundamental preference paramters
+
+
+
+
+
+## Results
+
+- PCAs deliver poor picture
+
+- First two PCs only explain 46% of the variance
+
+- Main reason: Correlation between preference paramters and emissions is not too great
+
+- Clustering delivers four/five groups that sort of make sense
+
+
+
+
+
+
+## Data description
+
+Load the data
+```{r}
+load("C:/Users/blasi/OneDrive/Desktop/UPF Studies/multivariate data analysis/Class/Group project/1 LOCAL COPIES/gps/Emissions_and_Preferences.RData")
+```
+Subset
+```{r}
+library("dplyr")
+df.empref1 =
+  df.empref %>%
+    select(-c(country))
+
+rownames(df.empref1) <- df.empref1[,1]
+
+df.empref2 =
+  df.empref1 %>%
+    select(-c(iso_code))
+
+#subset of preferences and only TOTAL emissions
+df.empref2sub =
+    df.empref2 %>%
+      select(-c(emissions.agriculture, emissions.buildings, emissions.extraction, emissions.manufacturing, emissions.maritime, emissions.oil.and.gas, emissions.power, emissions.transport ,emissions.waste))
+
+head(df.empref2)
+```
+Scale and covariance matrix
+```{r}
+X <- as.matrix(df.empref2)
+
+Xs <- scale(X)
+R <- cov(Xs)
+R
+```
+
+
+
+
+
+## PCA
+```{r}
+l <- eigen(R)$values
+V <- eigen(R)$vectors
+Y <- Xs %*% V
+# the portion of the variance that retains each PC
+R2 = l / sum(l) *100
+# accumulating this quantities:
+cumsum( l / sum(l))
+
+#automatically
+library(ade4)
+library(factoextra)
+pca.empref = dudi.pca(df.empref2, scannf = FALSE)
+pca.empref$eig
+cumsum(pca.empref$eig)/sum(pca.empref$eig)
+fviz_eig(pca.empref, geom = "bar", bar_width = 0.3, addlabels=T) + ggtitle("")
+```
+
+```{r}
+#Plot
+plot(Y[,1:2],
+  type="n", # don't plot anything now
+  asp = 1, # aspect ratio, very important!
+  main=paste("Variables plot, expl. var is ",
+               round(R2[1]+R2[2],1), " %"),
+  xlab=paste("CP1(", round(R2[1],1), "%)"), # title x axis
+  ylab=paste("CP2(", round(R2[2],1), "%)") # title y axis
+)
+
+# add the axis
+abline(v=0, col="blue")
+abline(h=0, col="blue")
+
+# the dots and names
+points(Y[,1:2], pch=".") # plot a dot per row
+text(Y[,1:2],row.names(df.empref2),cex=0.6)
+```
+
+
+
+
+## SVD and Variables Plot
+```{r}
+#Carry out the Singular Value Decomposition
+svd <- svd(Xs)
+
+
+Utilde <- svd$u[,1:2] %*% sqrt(diag(svd$d[1:2]))
+Vtilde <- svd$v[,1:2] %*% sqrt(diag(svd$d[1:2]))
+
+
+nn <- paste(rownames(Xs))
+xlim <- ylim <- range(c(range(1.5*Vtilde)))
+plot(NULL,xlab='First biplot component',ylab='Second biplot component',xlim=xlim,ylim=ylim,cex.lab=0.5)
+arrows(x0=0,y0=0,x1=Vtilde[,1],y1=Vtilde[,2],col='red', code=2, length=0.1)
+text(.9*Vtilde[,1],Vtilde[,2],paste(colnames(Xs)),pos=c(1,3),col='red',cex=0.5)
+```
+
+Biplot
+```{r}
+nn <- paste(rownames(Xs))
+xlim <- ylim <- range(c(range(Vtilde),range(1.5*Vtilde)))
+plot(Utilde,xlab='First biplot component',ylab='Second biplot component',xlim=xlim,ylim=ylim,cex.lab=1.25)
+text(Utilde[,1:2],nn,pos=c(4,1,2),cex=0.5)
+arrows(x0=0,y0=0,x1=Vtilde[,1],y1=Vtilde[,2],col='red', code=2, length=0.1)
+text(.9*Vtilde[,1],Vtilde[,2],paste(colnames(Xs)),pos=c(1,3),col='red',cex=0.5)
+
+```
+
+
+
+
+## Subset Analysis
+
+Total emissions only
+
+Scale and covariance matrix
+```{r}
+Xsub <- as.matrix(df.empref2sub)
+
+Xssub <- scale(Xsub)
+Rs <- cov(Xssub)
+```
+PCA
+```{r}
+ls <- eigen(Rs)$values
+Vs <- eigen(Rs)$vectors
+Ys <- Xssub %*% Vs
+# the portion of the variance that retains each PC
+R2s = ls / sum(ls) *100
+# accumulating this quantities:
+cumsum( ls / sum(ls))
+
+#automatically
+library(ade4)
+library(factoextra)
+pca.emprefsub = dudi.pca(df.empref2sub, scannf = FALSE)
+pca.emprefsub$eig
+cumsum(pca.emprefsub$eig)/sum(pca.emprefsub$eig)
+fviz_eig(pca.emprefsub, geom = "bar", bar_width = 0.3, addlabels=T) + ggtitle("")
+```
+
+```{r}
+#Plot
+plot(Ys[,1:2],
+  type="n", # don't plot anything now
+  asp = 1, # aspect ratio, very important!
+  main=paste("Variables plot, expl. var is ",
+               round(R2s[1]+R2s[2],1), " %"),
+  xlab=paste("CP1(", round(R2s[1],1), "%)"), # title x axis
+  ylab=paste("CP2(", round(R2s[2],1), "%)") # title y axis
+)
+
+# add the axis
+abline(v=0, col="blue")
+abline(h=0, col="blue")
+
+# the dots and names
+points(Ys[,1:2], pch=".") # plot a dot per row
+text(Ys[,1:2],row.names(df.empref2sub),cex=0.6)
+```
+
+
+
+
+## SVD and Variables Plot
+```{r}
+#Carry out the Singular Value Decomposition
+svdsub <- svd(Xssub)
+
+
+Utildes <- svdsub$u[,1:2] %*% sqrt(diag(svdsub$d[1:2]))
+Vtildes <- svdsub$v[,1:2] %*% sqrt(diag(svdsub$d[1:2]))
+
+
+nn <- paste(rownames(Xssub))
+xlim <- ylim <- range(c(range(1.5*Vtildes)))
+plot(NULL,xlab='First biplot component',ylab='Second biplot component',xlim=xlim,ylim=ylim,cex.lab=0.5)
+arrows(x0=0,y0=0,x1=Vtildes[,1],y1=Vtildes[,2],col='red', code=2, length=0.1)
+text(.9*Vtildes[,1],Vtildes[,2],paste(colnames(Xssub)),pos=c(1,3),col='red',cex=0.5)
+```
+
+
+
+## Biplot
+```{r}
+nn <- paste(rownames(Xssub))
+xlim <- ylim <- range(c(range(Vtildes),range(1.5*Vtildes)))
+plot(Utilde,xlab='First biplot component',ylab='Second biplot component',xlim=xlim,ylim=ylim,cex.lab=1.25)
+text(Utildes[,1:2],nn,pos=c(4,1,2),cex=0.5)
+arrows(x0=0,y0=0,x1=Vtildes[,1],y1=Vtildes[,2],col='red', code=2, length=0.1)
+text(.9*Vtildes[,1],Vtildes[,2],paste(colnames(Xssub)),pos=c(1,3),col='red',cex=0.5)
+
+```
+
+
+
+ 
+## Clustering
+
+Distances
+```{r}
+d_euclidean <- dist(Xs)
+d_manhattan <- dist(Xs, method="manhattan")
+
+# S^(-1/2)
+Sinvsqrt = V%*%diag(1/sqrt(l))
+
+# X in mahalanobis space
+Xinvsqrt = Xs%*%Sinvsqrt
+
+d_mahalanobis <- as.dist(dist(Xinvsqrt))
+```
+Hierarchical Clustering
+Eucledian
+```{r}
+hc <- hclust(d_euclidean)
+plot(hc ,hang = -1, main="Euclidean dist - Complete linkage", cex=0.5)
+```
+Manhattan
+```{r}
+hc <- hclust(d_manhattan)
+plot(hc ,hang = -1, main="Manhatta dist - Complete linkage", cex=0.5)
+```
+
+
+
+## k-means
+```{r}
+pc <- prcomp(Xs)$x
+km1 <- kmeans(Xs, centers = 4 )
+km2 <- kmeans(Xs, centers = 5 )
+
+clus1 <- km1$cluster
+clus2 <- km2$cluster
+
+plot(pc[,1],pc[,2],col=clus1,pch=clus1,xlab='PC1',ylab='PC2',main="Plot with k-mean with k=4")
+text(pc[,1]-0.1,pc[,2]-0.1, labels=rownames(X), cex=0.6)
+plot(pc[,1],pc[,2],col=clus2,pch=clus2,xlab='PC1',ylab='PC2',main="Plot with k-mean with k=5")
+text(pc[,1]-0.1,pc[,2]-0.1, labels=rownames(X), cex=0.6)
+
+```
+
+
+
+## Choosing k formally
+```{r}
+wss = c(sum(Xs^2))
+
+for (i in 2:10) {
+  km  = kmeans(Xs, centers = i)
+  wss = c(wss,sum(km$withinss))
+}
+plot(wss,xlab="k",ylab="wss",main="WSS-Euclidean")
+```
+
+
+
+
+## With the subset
+
+Distances
+```{r}
+d_euclideans <- dist(Xssub)
+d_manhattans <- dist(Xssub, method="manhattan")
+
+# S^(-1/2)
+Sinvsqrts = Vs%*%diag(1/sqrt(ls))
+
+# X in mahalanobis space
+Xinvsqrts = Xssub%*%Sinvsqrts
+
+d_mahalanobiss <- as.dist(dist(Xinvsqrts))
+```
+
+
+Hierarchical Clustering
+Eucledian
+```{r}
+hcs <- hclust(d_euclideans)
+plot(hcs ,hang = -1, main="Euclidean dist - Complete linkage", cex=0.5)
+```
+Manhattan
+```{r}
+hcs <- hclust(d_manhattans)
+plot(hcs ,hang = -1, main="Manhatta dist - Complete linkage", cex=0.5)
+```
+
+
+
+## k-means
+```{r}
+pcs <- prcomp(Xssub)$x
+km1s <- kmeans(Xssub, centers = 4 )
+km2s <- kmeans(Xssub, centers = 5 )
+
+clus1s <- km1s$cluster
+clus2s <- km2s$cluster
+
+plot(pcs[,1],pcs[,2],col=clus1s,pch=clus1s,xlab='PC1',ylab='PC2',main="Plot with k-mean with k=4")
+text(pcs[,1]-0.1,pcs[,2]-0.1, labels=rownames(X), cex=0.6)
+plot(pcs[,1],pcs[,2],col=clus2s,pch=clus2s,xlab='PC1',ylab='PC2',main="Plot with k-mean with k=5")
+text(pcs[,1]-0.1,pcs[,2]-0.1, labels=rownames(X), cex=0.6)
+
+```
+
+
+
+## Choosing k formally
+```{r}
+wsssub = c(sum(Xssub^2))
+
+for (i in 2:10) {
+  kms  = kmeans(Xssub, centers = i)
+  wsssub = c(wsssub,sum(km$withinss))
+}
+plot(wsssub,xlab="k",ylab="wss",main="WSS-Euclidean")
+```
+
+
+
+ 
+## Further thoughts
+
+- Analysis with emissions and preferences was not fruitful although a nice idea
+
+- Possible Solution: Perform Factor Analysis as
+
+- Further explorations - Emissions and Taxes: Patterns underlying emission volumes and CO2 taxes on the country level + analysis with coded climate pledges to Paris Protocol
+
+- Idea: Different groups acting according to stated behaviour and ones that do not + heterogenous dynamics according to actually being a high/low emitting country in comparison
