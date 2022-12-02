@@ -2,7 +2,9 @@
 title: "R Coding Sample"
 author: "Jonas Wallstein"
 date: "2022-11-20"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
