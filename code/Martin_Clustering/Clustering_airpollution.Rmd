@@ -8,6 +8,7 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
+
 ```
 
 
@@ -17,6 +18,7 @@ knitr::opts_chunk$set(echo = TRUE)
 rm(list = ls())
 library("ggplot2")
 library("MASS")
+=======
 ```
 
 ```{r}
@@ -129,6 +131,7 @@ data$cluster <- clus1
 ```
 
 
+=======
 
 ## Choosing k formally
 ```{r}
