@@ -7,6 +7,18 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+
+
+```
+
+
+## Setup: install packages, get data
+
+```{r}
+rm(list = ls())
+library("ggplot2")
+library("MASS")
+=======
 ```
 
 ```{r}
@@ -99,6 +111,27 @@ plot(pc[,1],pc[,2],col=clus3,pch=clus3,xlab='PC1',ylab='PC2',main="Plot with k-m
 text(pc[,1]-0.1,pc[,2]-0.1, labels=rownames(X), cex=0.6)
 
 ```
+## Classification
+```{r}
+data$cluster <- clus1
+
+# plot data and classes
+  plot1 <- ggplot(mapping = aes(x = precip, y = manu)) +
+    geom_point(aes(colour = cluster), data = data)
+  plot1
+
+  polllution_lda = lda(cluster ~ precip + manu, data = data)
+  polllution_lda
+  
+  polllution_lda.values <- predict(polllution_lda)
+  col <- data$cluster
+  plot2 <- plot(polllution_lda.values$x[,1:2],col=col,xlab='Linear discriminant 1',
+       ylab='Linear discriminant 2',cex.lab=1.5)
+
+```
+
+
+=======
 
 ## Choosing k formally
 ```{r}
