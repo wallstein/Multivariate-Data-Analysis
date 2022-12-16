@@ -17,6 +17,7 @@ knitr::opts_chunk$set(echo = TRUE)
 rm(list = ls())
 library("ggplot2")
 library("MASS")
+library("dplyr")
 ```
 
 ```{r}
@@ -80,12 +81,12 @@ Hierarchical Clustering
 Eucledian
 ```{r}
 hc <- hclust(d_euclidean)
-plot(hc ,hang = -1, main="Euclidean dist - Complete linkage", cex=0.5)
+plot(hc ,hang = -1, main="Euclidean distance - Complete linkage", cex=0.5)
 ```
 Manhattan
 ```{r}
 hc <- hclust(d_manhattan)
-plot(hc ,hang = -1, main="Manhatta dist - Complete linkage", cex=0.5)
+plot(hc ,hang = -1, main="Manhattan distance - Complete linkage", cex=0.5)
 ```
 
 =>Suggest 3 to 4 groups
@@ -125,6 +126,10 @@ data$cluster <- clus1
   col <- data$cluster
   plot2 <- plot(polllution_lda.values$x[,1:2],col=col,xlab='Linear discriminant 1',
        ylab='Linear discriminant 2',cex.lab=1.5)
+  
+  data %>%
+    group_by(cluster) %>%
+    summarize(mean_so2 = mean(SO2))
 
 ```
 
